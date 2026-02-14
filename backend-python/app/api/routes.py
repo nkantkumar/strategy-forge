@@ -13,7 +13,7 @@ from app.config import Settings
 from app.services.backtest_engine import BacktestEngine
 from app.services.feature_engineering import TechnicalFeatures
 from app.services.market_data import MarketDataService
-from app.services.mlflow_tracking import StrategyTracker
+from app.services.mlflow_tracking import StrategyTracker, get_top_strategies_from_mlflow
 from app.services.news_data import NewsService
 from app.services.sentiment_analysis import FinancialSentimentAnalyzer
 from app.services.strategy_generator import StrategyGenerator
@@ -119,9 +119,15 @@ async def run_backtest(req: BacktestRequest) -> dict[str, Any]:
 
 
 @router.get("/strategies/top")
-async def get_top_strategies(limit: int = 10) -> dict[str, Any]:
-    """Return top strategies (from MLflow when available)."""
-    return {"top_strategies": []}
+async def get_top_strategies(limit: int = 10, order_by: str = "sharpe_ratio") -> dict[str, Any]:
+    """Return top strategies from MLflow (runs logged from backtests)."""
+    settings = Settings()
+    strategies = get_top_strategies_from_mlflow(
+        tracking_uri=settings.mlflow_tracking_uri,
+        limit=min(limit, 50),
+        order_by_metric=order_by if order_by in ("sharpe_ratio", "total_return", "win_rate") else "sharpe_ratio",
+    )
+    return {"top_strategies": strategies}
 
 
 @router.post("/optimize/strategy")

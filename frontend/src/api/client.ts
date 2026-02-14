@@ -89,8 +89,22 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestRespons
   return res.json()
 }
 
-export async function getTopStrategies(limit = 10): Promise<{ top_strategies: unknown[] }> {
-  const res = await fetch(`${API_BASE}/strategies/top?limit=${limit}`)
+export type TopStrategy = {
+  run_id?: string
+  name: string
+  position_sizing?: string
+  max_positions?: number
+  sharpe_ratio?: number
+  total_return?: number
+  annual_return?: number
+  max_drawdown?: number
+  win_rate?: number
+  profit_factor?: number
+  total_trades?: number
+}
+
+export async function getTopStrategies(limit = 10, orderBy = 'sharpe_ratio'): Promise<{ top_strategies: TopStrategy[] }> {
+  const res = await fetch(`${API_BASE}/strategies/top?limit=${limit}&order_by=${orderBy}`)
   if (!res.ok) throw new Error(res.statusText)
   return res.json()
 }
