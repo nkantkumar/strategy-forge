@@ -13,8 +13,10 @@ from app.config import Settings
 from app.services.backtest_engine import BacktestEngine
 from app.services.feature_engineering import TechnicalFeatures
 from app.services.market_data import MarketDataService
+from app.services.email_notifications import send_entry_signal, send_exit_signal
 from app.services.mlflow_tracking import StrategyTracker, get_top_strategies_from_mlflow
 from app.services.news_data import NewsService
+from app.services.signal_check import check_entry_exit_signals
 from app.services.sentiment_analysis import FinancialSentimentAnalyzer
 from app.services.strategy_generator import StrategyGenerator
 from app.services.vector_db import StrategyKnowledgeBase
@@ -36,6 +38,12 @@ class BacktestRequest(BaseModel):
     start_date: str
     end_date: str
     initial_capital: float = 100_000
+
+
+class SignalCheckRequest(BaseModel):
+    strategy: dict[str, Any]
+    symbol: str
+    emails: list[str] | None = None  # override default recipients
 
 
 @router.post("/strategies/generate")
@@ -128,6 +136,34 @@ async def get_top_strategies(limit: int = 10, order_by: str = "sharpe_ratio") ->
         order_by_metric=order_by if order_by in ("sharpe_ratio", "total_return", "win_rate") else "sharpe_ratio",
     )
     return {"top_strategies": strategies}
+
+
+@router.post("/signals/check")
+async def check_signals_and_notify(req: SignalCheckRequest) -> dict[str, Any]:
+    """
+    Check if entry/exit conditions match on latest data for the given strategy and symbol.
+    If SMTP is configured, send email alerts when entry or exit conditions match.
+    """
+    entry_matched, exit_matched, current_values = await check_entry_exit_signals(req.strategy, req.symbol)
+    strategy_name = req.strategy.get("name", "Unnamed")
+    to_emails = req.emails if req.emails else None
+    settings = Settings()
+    entry_email_sent = False
+    exit_email_sent = False
+    if settings.smtp_host and settings.smtp_user and settings.smtp_password:
+        if entry_matched:
+            entry_email_sent = send_entry_signal(strategy_name, req.symbol, to_emails=to_emails)
+        if exit_matched:
+            exit_email_sent = send_exit_signal(strategy_name, req.symbol, to_emails=to_emails)
+    return {
+        "entry_matched": entry_matched,
+        "exit_matched": exit_matched,
+        "entry_email_sent": entry_email_sent,
+        "exit_email_sent": exit_email_sent,
+        "current_values": current_values,
+        "entry_rules": req.strategy.get("entry_rules", []),
+        "exit_rules": req.strategy.get("exit_rules", []),
+    }
 
 
 @router.post("/optimize/strategy")

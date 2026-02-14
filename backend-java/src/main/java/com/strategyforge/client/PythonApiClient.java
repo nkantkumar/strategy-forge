@@ -88,6 +88,16 @@ public class PythonApiClient {
         return get("/api/v1/strategies/top?limit=" + limit);
     }
 
+    public JsonNode checkSignals(Map<String, Object> strategy, String symbol, java.util.List<String> emails) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("strategy", strategy != null ? strategy : java.util.Map.of());
+        body.put("symbol", symbol);
+        if (emails != null && !emails.isEmpty()) {
+            body.put("emails", emails);
+        }
+        return post("/api/v1/signals/check", body);
+    }
+
     public JsonNode health() {
         return get("/api/v1/health");
     }

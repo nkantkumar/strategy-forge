@@ -177,11 +177,63 @@ strategy-forge/
 - **Java:** `application.yml`: `strategy-forge.python-api.base-url`, `spring.data.redis.*`
 - **Frontend:** In dev, `vite.config.ts` proxies `/api` to port 8080.
 
+### Email configuration (for entry/exit alerts)
+
+Email is **optional**. Set these only if you want the app to send alerts when entry or exit conditions match (Alerts page or `POST /api/v1/signals/check`).
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SMTP_HOST` | Yes* | SMTP server hostname |
+| `SMTP_PORT` | No | Port (default `587`) |
+| `SMTP_USER` | Yes* | SMTP login (often your email) |
+| `SMTP_PASSWORD` | Yes* | SMTP password or app password |
+| `SMTP_USE_TLS` | No | `true` (default) or `false` |
+| `ALERT_EMAIL_FROM` | No | From address (defaults to `SMTP_USER`) |
+| `ALERT_EMAIL_TO` | No** | Default recipients, comma-separated |
+
+\* Required for email to be sent. If any of these are missing, alerts are skipped.  
+\** If not set, you must pass `emails` in the request when calling the signal check.
+
+**Where to configure**
+
+1. **Local run (Python only)**  
+   In `backend-python/` create a `.env` file (see `backend-python/.env.example`):
+   ```bash
+   cd backend-python
+   cp .env.example .env
+   # Edit .env and set SMTP_* and ALERT_EMAIL_TO
+   ```
+
+2. **Docker Compose**  
+   Add the variables under `python-api` in `docker-compose.yml` or use an env file:
+   ```yaml
+   python-api:
+     environment:
+       # ... existing ...
+       SMTP_HOST: smtp.gmail.com
+       SMTP_PORT: "587"
+       SMTP_USER: your-email@gmail.com
+       SMTP_PASSWORD: ${SMTP_PASSWORD}   # set in shell or .env
+       ALERT_EMAIL_TO: you@example.com
+   ```
+
+3. **Kubernetes**  
+   Create a Secret for SMTP and add env to the `python-api` deployment in `k8s/all-in-one.yaml`, or use a ConfigMap for non-secret values and Secret for `SMTP_PASSWORD` and `ALERT_EMAIL_TO`.
+
+**Example: Gmail**
+
+- Use an [App Password](https://support.google.com/accounts/answer/185833) (2FA required), not your normal password.
+- `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USE_TLS=true`, `SMTP_USER` = your Gmail, `SMTP_PASSWORD` = app password.
+
+**Example: SendGrid / other**
+
+- Use the provider’s SMTP host and port, and the API key or SMTP credentials they give you for `SMTP_USER` / `SMTP_PASSWORD`.
+
 ## Extending
 
 - **LLM:** Set `ANTHROPIC_API_KEY`; strategy generator uses Claude (RAG + ChromaDB) when available.
 - **FinBERT:** In `sentiment_analysis.py`, use `FinancialSentimentAnalyzer(use_finbert=True)` (requires `transformers`, `torch`).
-- **Top strategies:** Implement `GET /strategies/top` in Python by querying MLflow and optionally cache in Redis from Java.
+- **Email alerts:** Use the **Alerts** page or `POST /api/v1/signals/check` with `{ "strategy", "symbol", "emails"?: [] }` to check latest data and send entry/exit emails when SMTP is configured.
 
 ## License
 

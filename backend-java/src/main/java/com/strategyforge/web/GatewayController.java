@@ -9,6 +9,7 @@ import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -73,6 +74,22 @@ public class GatewayController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/signals/check")
+    @CircuitBreaker(name = "pythonApi", fallbackMethod = "signalsCheckFallback")
+    @Retry(name = "pythonApi")
+    public ResponseEntity<JsonNode> checkSignals(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> strategy = (Map<String, Object>) request.get("strategy");
+        String symbol = (String) request.get("symbol");
+        @SuppressWarnings("unchecked")
+        List<String> emails = (List<String>) request.get("emails");
+        if (strategy == null || symbol == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        JsonNode result = pythonApi.checkSignals(strategy, symbol, emails);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/health")
     public ResponseEntity<JsonNode> health() {
         JsonNode result = pythonApi.health();
@@ -97,5 +114,12 @@ public class GatewayController {
         return ResponseEntity.ok(
                 com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode()
                         .putArray("top_strategies"));
+    }
+
+    public ResponseEntity<JsonNode> signalsCheckFallback(Map<String, Object> request, Throwable t) {
+        return ResponseEntity.status(503).body(
+                com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode()
+                        .put("error", "Signal check temporarily unavailable")
+                        .put("detail", t != null ? t.getMessage() : "unknown"));
     }
 }

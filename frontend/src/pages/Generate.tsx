@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { generateStrategy, type GenerateResponse } from '../api/client'
 
-const defaultStart = () => {
-  const d = new Date()
-  d.setFullYear(d.getFullYear() - 1)
-  return d.toISOString().slice(0, 10)
-}
 const defaultEnd = () => new Date().toISOString().slice(0, 10)
+const presets = [
+  { label: 'Last 1 month', start: () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10) } },
+  { label: 'Last 3 months', start: () => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().slice(0, 10) } },
+  { label: 'Last 6 months', start: () => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().slice(0, 10) } },
+  { label: 'Last 1 year', start: () => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10) } },
+]
 
 export default function GeneratePage() {
   const [symbol, setSymbol] = useState('AAPL')
-  const [startDate, setStartDate] = useState(defaultStart())
+  const [startDate, setStartDate] = useState(presets[3].start())
   const [endDate, setEndDate] = useState(defaultEnd())
   const [riskTolerance, setRiskTolerance] = useState('medium')
   const [loading, setLoading] = useState(false)
@@ -21,6 +22,15 @@ export default function GeneratePage() {
     e.preventDefault()
     setError(null)
     setResult(null)
+    const today = new Date().toISOString().slice(0, 10)
+    if (endDate > today) {
+      setError('End date must be today or earlier. Market data is only available for past dates.')
+      return
+    }
+    if (startDate > endDate) {
+      setError('Start date must be before end date.')
+      return
+    }
     setLoading(true)
     try {
       const res = await generateStrategy({
@@ -41,7 +51,7 @@ export default function GeneratePage() {
     <div>
       <h1 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>Generate Strategy</h1>
       <p style={{ color: 'var(--muted)', marginBottom: '1.5rem' }}>
-        Use market data and sentiment to generate a trading strategy (RAG + optional LLM).
+        Use market data and sentiment to generate a trading strategy (RAG + optional LLM). Use a date range up to <strong>today</strong> — market data is only available for past dates.
       </p>
       <form onSubmit={handleSubmit} style={{
         background: 'var(--surface)',
@@ -90,6 +100,7 @@ export default function GeneratePage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem',
@@ -100,6 +111,29 @@ export default function GeneratePage() {
               }}
             />
           </div>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <span style={{ color: 'var(--muted)', fontSize: '0.875rem', marginRight: '0.5rem' }}>Quick range:</span>
+          {presets.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => { setStartDate(p.start()); setEndDate(defaultEnd()) }}
+              style={{
+                marginRight: '0.5rem',
+                marginTop: '0.25rem',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8rem',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 4,
+                color: 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--muted)' }}>Risk tolerance</label>

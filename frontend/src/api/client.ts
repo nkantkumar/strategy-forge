@@ -109,6 +109,30 @@ export async function getTopStrategies(limit = 10, orderBy = 'sharpe_ratio'): Pr
   return res.json()
 }
 
+export type SignalCheckResponse = {
+  entry_matched: boolean
+  exit_matched: boolean
+  entry_email_sent: boolean
+  exit_email_sent: boolean
+  message?: string
+  current_values?: Record<string, number>
+  entry_rules?: string[]
+  exit_rules?: string[]
+}
+
+export async function checkSignals(strategy: Strategy, symbol: string, emails?: string[]): Promise<SignalCheckResponse> {
+  const res = await fetch(`${API_BASE}/signals/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strategy, symbol, emails }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { detail?: string; error?: string }
+    throw new Error(err.detail ?? err.error ?? res.statusText)
+  }
+  return res.json()
+}
+
 export async function health(): Promise<{ status: string }> {
   const res = await fetch(`${API_BASE}/health`)
   if (!res.ok) throw new Error(res.statusText)

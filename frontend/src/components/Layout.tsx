@@ -7,6 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/generate', label: 'Generate Strategy' },
     { to: '/backtest', label: 'Backtest' },
     { to: '/strategies', label: 'Top Strategies' },
+    { to: '/alerts', label: 'Signal and Alerts' },
   ]
   return (
     <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
