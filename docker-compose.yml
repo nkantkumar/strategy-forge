@@ -1,0 +1,73 @@
+# Strategy Forge - full stack
+# Run: docker compose up -d
+# Frontend: http://localhost:3000  API (Java): http://localhost:8080  Python: http://localhost:8000
+
+version: "3.8"
+
+services:
+  gateway:
+    build: ./backend-java
+    ports:
+      - "8080:8080"
+    environment:
+      PYTHON_API_URL: http://python-api:8000
+      REDIS_HOST: redis
+    depends_on:
+      - python-api
+      - redis
+    networks:
+      - app
+
+  python-api:
+    build: ./backend-python
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      CHROMA_PERSIST_DIR: /app/chroma_db
+    volumes:
+      - chroma_data:/app/chroma_db
+    depends_on:
+      - redis
+    networks:
+      - app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    networks:
+      - app
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    ports:
+      - "5000:5000"
+    environment:
+      BACKEND_STORE_URI: sqlite:///mlflow/mlflow.db
+      ARTIFACT_ROOT: /mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    command: mlflow server --host 0.0.0.0 --port 5000
+    networks:
+      - app
+
+volumes:
+  chroma_data:
+  mlflow_data:
+
+networks:
+  app:
+    driver: bridge

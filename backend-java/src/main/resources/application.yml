@@ -1,0 +1,54 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: strategy-forge-gateway
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  # Optional: serve React static build from classpath
+  web:
+    resources:
+      add-mappings: true
+      static-locations: classpath:/static/
+
+# Python backend (strategy generation & backtest)
+strategy-forge:
+  python-api:
+    base-url: ${PYTHON_API_URL:http://localhost:8000}
+    connect-timeout: 5000
+    read-timeout: 60000
+
+# Resilience
+resilience4j:
+  circuitbreaker:
+    instances:
+      pythonApi:
+        register-health-indicator: true
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  retry:
+    instances:
+      pythonApi:
+        max-attempts: 3
+        wait-duration: 500ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.strategyforge: INFO
+    org.springframework.web: INFO

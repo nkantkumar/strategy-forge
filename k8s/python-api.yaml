@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-api
+  namespace: strategy-forge
+  labels:
+    app: python-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-api
+  template:
+    metadata:
+      labels:
+        app: python-api
+    spec:
+      containers:
+        - name: python-api
+          image: strategy-forge-python-api:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: strategy-forge-config
+                  key: REDIS_URL
+            - name: MLFLOW_TRACKING_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: strategy-forge-config
+                  key: MLFLOW_TRACKING_URI
+            - name: CHROMA_PERSIST_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: strategy-forge-config
+                  key: CHROMA_PERSIST_DIR
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: chroma-data
+              mountPath: /app/chroma_db
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: chroma-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-api
+  namespace: strategy-forge
+spec:
+  selector:
+    app: python-api
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP

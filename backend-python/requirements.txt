@@ -1,0 +1,36 @@
+# Strategy Forge - Python Backend (Docker-friendly pins)
+# Data & API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pandas>=2.0.0
+numpy>=1.26.0,<2.0.0
+yfinance>=0.2.30
+requests>=2.31.0
+python-multipart>=0.0.9
+pydantic-settings>=2.0.0
+
+# Feature extraction
+ta>=0.11.0
+
+# RAG & Vector DB (compatible set)
+langchain-core>=0.1.0
+langchain-community>=0.0.20
+langchain-text-splitters>=0.0.1
+chromadb>=0.4.22
+# Lighter embedding for Docker (avoids full sentence-transformers/torch in default build)
+sentence-transformers>=2.2.0,<3.0.0
+
+# Optional LLM
+langchain-anthropic>=0.0.6
+
+# MLOps
+mlflow>=2.10.0
+psycopg2-binary>=2.9.9
+redis>=5.0.0
+
+# Observability
+prometheus-client>=0.19.0
+structlog>=24.0.0
+
+# HTTP client
+httpx>=0.26.0
