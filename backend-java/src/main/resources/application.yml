@@ -17,6 +17,14 @@ spring:
       add-mappings: true
       static-locations: classpath:/static/
 
+# Auth: API key and/or Keycloak (OIDC JWT)
+# - AUTH_API_KEY: when set, clients can send header "X-API-Key: <value>" (e.g. for scripts)
+# - KEYCLOAK_ISSUER_URI: when set, gateway validates Bearer JWT from Keycloak (e.g. https://keycloak.example.com/realms/my-realm)
+auth:
+  api-key: ${AUTH_API_KEY:}
+  keycloak:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:}
+
 # Python backend (strategy generation & backtest)
 strategy-forge:
   python-api:

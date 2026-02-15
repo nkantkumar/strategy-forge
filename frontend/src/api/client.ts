@@ -1,4 +1,20 @@
+import { getToken } from '../keycloak'
+
 const API_BASE = '/api/v1'
+
+/** Headers for API calls: Bearer token (Keycloak) when available, else X-API-Key when VITE_API_KEY is set. */
+async function apiHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra }
+  if (!headers['Content-Type']) headers['Content-Type'] = 'application/json'
+  const token = await getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  } else {
+    const key = typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_API_KEY as string | undefined)
+    if (key) headers['X-API-Key'] = key
+  }
+  return headers
+}
 
 export type Strategy = {
   name: string
@@ -65,7 +81,7 @@ export type BacktestResponse = {
 export async function generateStrategy(req: GenerateRequest): Promise<GenerateResponse> {
   const res = await fetch(`${API_BASE}/strategies/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await apiHeaders(),
     body: JSON.stringify(req),
   })
   if (!res.ok) {
@@ -78,7 +94,7 @@ export async function generateStrategy(req: GenerateRequest): Promise<GenerateRe
 export async function runBacktest(req: BacktestRequest): Promise<BacktestResponse> {
   const res = await fetch(`${API_BASE}/backtest/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await apiHeaders(),
     body: JSON.stringify(req),
   })
   if (!res.ok) {
@@ -104,7 +120,7 @@ export type TopStrategy = {
 }
 
 export async function getTopStrategies(limit = 10, orderBy = 'sharpe_ratio'): Promise<{ top_strategies: TopStrategy[] }> {
-  const res = await fetch(`${API_BASE}/strategies/top?limit=${limit}&order_by=${orderBy}`)
+  const res = await fetch(`${API_BASE}/strategies/top?limit=${limit}&order_by=${orderBy}`, { headers: await apiHeaders() })
   if (!res.ok) throw new Error(res.statusText)
   return res.json()
 }
@@ -123,7 +139,7 @@ export type SignalCheckResponse = {
 export async function checkSignals(strategy: Strategy, symbol: string, emails?: string[]): Promise<SignalCheckResponse> {
   const res = await fetch(`${API_BASE}/signals/check`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await apiHeaders(),
     body: JSON.stringify({ strategy, symbol, emails }),
   })
   if (!res.ok) {
@@ -134,7 +150,7 @@ export async function checkSignals(strategy: Strategy, symbol: string, emails?: 
 }
 
 export async function health(): Promise<{ status: string }> {
-  const res = await fetch(`${API_BASE}/health`)
+  const res = await fetch(`${API_BASE}/health`, { headers: await apiHeaders() })
   if (!res.ok) throw new Error(res.statusText)
   return res.json()
 }

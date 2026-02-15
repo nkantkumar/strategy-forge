@@ -232,6 +232,12 @@ spec:
               value: "redis"
             - name: REDIS_PORT
               value: "6379"
+            # Optional: set AUTH_API_KEY (or use secretKeyRef) to require X-API-Key header on /api/v1/**
+            # - name: AUTH_API_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: strategy-forge-auth
+            #       key: api-key
           ports:
             - containerPort: 8080
           resources:

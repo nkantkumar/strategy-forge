@@ -15,6 +15,8 @@
 - **Resilience:** Circuit breaker and retries (Resilience4j) on gateway; optional Redis for caching.
 - **Scale:** Stateless services; horizontal scaling of gateway and Python workers; Redis and Chroma/MLflow as shared state.
 
+For **enterprise deployment** (auth, RBAC, observability, scaling, CI/CD), see **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)**.
+
 ## Quick start
 
 ### Prerequisites
@@ -176,6 +178,34 @@ strategy-forge/
 - **Python:** `backend-python/.env` or env: `NEWS_API_KEY`, `ANTHROPIC_API_KEY`, `MLFLOW_TRACKING_URI`, `REDIS_URL`, `CHROMA_PERSIST_DIR`
 - **Java:** `application.yml`: `strategy-forge.python-api.base-url`, `spring.data.redis.*`
 - **Frontend:** In dev, `vite.config.ts` proxies `/api` to port 8080.
+
+### Authentication
+
+The gateway supports **API key** and/or **Keycloak (OIDC JWT)**. You can use one or both.
+
+**Keycloak (recommended for enterprise):** Users log in via Keycloak; the frontend sends a Bearer token. See **[docs/KEYCLOAK.md](docs/KEYCLOAK.md)** for setup.
+
+| Variable | Where | Description |
+|----------|--------|-------------|
+| `KEYCLOAK_ISSUER_URI` | Gateway | Keycloak realm issuer (e.g. `http://localhost:8180/realms/strategy-forge`). When set, gateway validates Bearer JWT. |
+| `VITE_KEYCLOAK_URL` | Frontend | Keycloak server URL (e.g. `http://localhost:8180`). |
+| `VITE_KEYCLOAK_REALM` | Frontend | Realm name. |
+| `VITE_KEYCLOAK_CLIENT_ID` | Frontend | Public client ID created in Keycloak. |
+
+When all three `VITE_KEYCLOAK_*` are set, the app redirects to Keycloak login and sends the token on each API call.
+
+**API key (optional)**
+
+The gateway can also require an API key for all `/api/v1/**` requests (e.g. for scripts or when Keycloak is not used). When enabled, clients must send the header `X-API-Key: <secret>`.
+
+| Variable | Where | Description |
+|----------|--------|-------------|
+| `AUTH_API_KEY` | Gateway (Java) | Secret value. If **set**, all `/api/v1/**` requests must include header `X-API-Key` with this value. If **not set**, no auth is required (current default). |
+| `VITE_API_KEY` | Frontend (build/runtime) | Same secret. When set, the frontend sends it as `X-API-Key` on every API call. Required for the UI to work when gateway auth is enabled. |
+
+- **Local:** Set `AUTH_API_KEY` in the environment before starting the Java app. For the frontend, create `.env` in `frontend/` with `VITE_API_KEY=<same-value>` (or pass at build time: `VITE_API_KEY=xxx npm run build`).
+- **Kubernetes:** Add `AUTH_API_KEY` to the gateway deployment (e.g. from a Secret). Build the frontend image with `VITE_API_KEY` set (e.g. build arg or env in Dockerfile) so the bundled app sends the key.
+- **Actuator:** `/actuator/**` (e.g. health checks) remains public so load balancers and K8s probes work without the key.
 
 ### Email configuration (for entry/exit alerts)
 
